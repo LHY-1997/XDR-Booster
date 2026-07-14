@@ -73,15 +73,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         // Let the slider's trailing edge define the menu width.
         let width: CGFloat = 176
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 53))
-        // When the toggle is on, AppKit reserves a leading checkmark gutter for
-        // standard menu items. Mirror that gutter in our custom slider row.
+        // AppKit removes the checkmark gutter while the toggle is off. Mirror
+        // that behavior in this custom row so its first character and slider
+        // align with the standard menu rows in either state.
         let textLeading: CGFloat = booster.isEnabled ? 28 : 13
         let sliderLeading: CGFloat = booster.isEnabled ? 30 : 16
         let sliderWidth: CGFloat = 140
         let label = NSTextField(labelWithString: "强度")
-        // Standard menu titles begin 16 pt from the content edge. The checkbox
-        // indicator lives in its own leading gutter, so this same column works
-        // for both the unchecked and checked states.
+        // Match AppKit's title column for the current checkmark state.
         label.frame = NSRect(x: textLeading, y: 31, width: 76, height: 16)
         label.font = .systemFont(ofSize: 12, weight: .medium)
         let value = NSTextField(labelWithString: String(format: "× %.2f", booster.multiplier))
