@@ -38,6 +38,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         button.target = self
         button.action = #selector(showPanel)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+
+        // 窗口和菜单栏完成初始化后，再按用户偏好恢复亮度增强。
+        if UserDefaults.standard.bool(forKey: PreferenceKey.enableBoostAtLaunch) {
+            DispatchQueue.main.async { [weak self] in
+                self?.booster.enable()
+                self?.refreshIcon()
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -163,7 +171,7 @@ private final class SettingsWindowController: NSWindowController {
         let window = NSWindow(contentViewController: controller)
         window.title = "XDR Lift 设置"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 380, height: 310))
+        window.setContentSize(NSSize(width: 380, height: 338))
         window.isReleasedWhenClosed = false
         window.center()
         super.init(window: window)
@@ -184,7 +192,8 @@ private final class SettingsViewController: NSViewController {
     private let brightnessToggle = NSButton(checkboxWithTitle: "亮度增强", target: nil, action: nil)
     private let strength = NSSlider(value: 1.45, minValue: 1.05, maxValue: 1.75, target: nil, action: nil)
     private let strengthValue = NSTextField(labelWithString: "")
-    private let launchAtLogin = NSButton(checkboxWithTitle: "登录时启动 XDR Lift", target: nil, action: nil)
+    private let launchAtLogin = NSButton(checkboxWithTitle: "开机时启动 XDR Lift", target: nil, action: nil)
+    private let enableBoostAtLaunch = NSButton(checkboxWithTitle: "启动时打开亮度提升", target: nil, action: nil)
 
     init(booster: XDRBooster, changed: @escaping () -> Void) {
         self.booster = booster
@@ -222,7 +231,9 @@ private final class SettingsViewController: NSViewController {
         let generalTitle = sectionTitle("通用")
         launchAtLogin.target = self
         launchAtLogin.action = #selector(launchAtLoginChanged)
-        let generalGroup = NSStackView(views: [generalTitle, launchAtLogin])
+        enableBoostAtLaunch.target = self
+        enableBoostAtLaunch.action = #selector(enableBoostAtLaunchChanged)
+        let generalGroup = NSStackView(views: [generalTitle, launchAtLogin, enableBoostAtLaunch])
         generalGroup.orientation = .vertical
         generalGroup.alignment = .leading
         generalGroup.spacing = 8
@@ -286,6 +297,11 @@ private final class SettingsViewController: NSViewController {
         }
     }
 
+    @objc private func enableBoostAtLaunchChanged() {
+        // 该选项只决定下次应用启动时是否自动开启，不改变当前开关状态。
+        UserDefaults.standard.set(enableBoostAtLaunch.state == .on, forKey: PreferenceKey.enableBoostAtLaunch)
+    }
+
     @objc private func quit() { NSApp.terminate(nil) }
 
     // 从共享的 booster 读取状态，避免设置窗口维护自己的副本而产生不同步。
@@ -296,6 +312,7 @@ private final class SettingsViewController: NSViewController {
         strength.doubleValue = booster.multiplier
         updateSliderValue()
         launchAtLogin.state = launchAtLoginEnabled ? .on : .off
+        enableBoostAtLaunch.state = UserDefaults.standard.bool(forKey: PreferenceKey.enableBoostAtLaunch) ? .on : .off
     }
 
     private var launchAtLoginEnabled: Bool {
@@ -313,6 +330,11 @@ private final class SettingsViewController: NSViewController {
     }
 }
 
+private enum PreferenceKey {
+    static let enableBoostAtLaunch = "enableBoostAtLaunch"
+    static let multiplier = "brightnessMultiplier"
+}
+
 @MainActor
 private final class XDRBooster {
     // 保存开启前的 Gamma 表；关闭时必须用它精确恢复。
@@ -321,9 +343,12 @@ private final class XDRBooster {
     private var overlay: HDRTriggerWindow?
     private var monitor: Timer?
 
-    var multiplier: CGFloat = 1.45 {
-        // 开启期间调节滑块时，立刻基于原始 Gamma 表重新写入倍率。
-        didSet { if isEnabled { applyGamma() } }
+    var multiplier: CGFloat {
+        // 每次变更都保存；下次启动时会恢复这个值。开启期间同时立即更新 Gamma。
+        didSet {
+            UserDefaults.standard.set(Double(multiplier), forKey: PreferenceKey.multiplier)
+            if isEnabled { applyGamma() }
+        }
     }
     private(set) var isEnabled = false
     private(set) var isSupported = false
@@ -333,6 +358,9 @@ private final class XDRBooster {
     private(set) var isHDRReady = false
 
     init() {
+        // 若没有保存记录则使用默认值；保存值仍限定在 UI 支持的范围内。
+        let saved = UserDefaults.standard.object(forKey: PreferenceKey.multiplier) as? Double ?? 1.45
+        multiplier = min(max(CGFloat(saved), 1.05), 1.75)
         // 显示器休眠前先恢复，避免恢复桌面后遗留临时 Gamma 设置。
         NotificationCenter.default.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.disable(reason: "显示器休眠，已恢复系统设置") }
