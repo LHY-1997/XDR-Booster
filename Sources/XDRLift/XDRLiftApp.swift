@@ -25,6 +25,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private lazy var menuSliderControl = MenuSliderControl { [weak self] value in
         self?.booster.multiplier = value
+        // 设置窗口若已创建，拖动菜单栏滑块时也立即同步其中的数值和位置。
+        self?.settingsWindowController.refreshControls()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -52,6 +54,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         booster.isEnabled ? booster.disable() : booster.enable()
         refreshIcon()
+        settingsWindowController.refreshControls()
     }
 
     private func makeSystemMenu() -> NSMenu {
@@ -113,10 +116,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleFromMenu() {
         booster.isEnabled ? booster.disable() : booster.enable()
         refreshIcon()
+        settingsWindowController.refreshControls()
     }
 
     @objc private func openSettings() {
         // 让设置窗口成为前台窗口；菜单栏应用默认不会自动获得焦点。
+        settingsWindowController.refreshControls()
         settingsWindowController.showWindow(self)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -165,6 +170,11 @@ private final class SettingsWindowController: NSWindowController {
     }
 
     required init?(coder: NSCoder) { nil }
+
+    // 供菜单栏操作调用：窗口打开时即时更新；关闭时也安全地更新下次显示的状态。
+    func refreshControls() {
+        (contentViewController as? SettingsViewController)?.refreshControls()
+    }
 }
 
 @MainActor
@@ -243,12 +253,12 @@ private final class SettingsViewController: NSViewController {
             sliderHeader.widthAnchor.constraint(equalTo: root.widthAnchor),
             strength.widthAnchor.constraint(equalTo: root.widthAnchor)
         ])
-        refresh()
+        refreshControls()
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
-        refresh()
+        refreshControls()
     }
 
     @objc private func strengthChanged() {
@@ -259,7 +269,7 @@ private final class SettingsViewController: NSViewController {
     @objc private func toggleBoost() {
         booster.isEnabled ? booster.disable() : booster.enable()
         changed()
-        refresh()
+        refreshControls()
     }
 
     @objc private func launchAtLoginChanged() {
@@ -278,7 +288,8 @@ private final class SettingsViewController: NSViewController {
 
     @objc private func quit() { NSApp.terminate(nil) }
 
-    private func refresh() {
+    // 从共享的 booster 读取状态，避免设置窗口维护自己的副本而产生不同步。
+    func refreshControls() {
         booster.refresh()
         brightnessToggle.state = booster.isEnabled ? .on : .off
         brightnessToggle.isEnabled = booster.isSupported || booster.isEnabled
