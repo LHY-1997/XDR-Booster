@@ -4,7 +4,7 @@ import MetalKit
 import ServiceManagement
 
 @main
-struct XDRLiftApp {
+struct XDRPlusApp {
     static func main() {
         // 以“菜单栏辅助应用”模式运行：不会出现在 Dock 或 Cmd-Tab 切换器中。
         let app = NSApplication.shared
@@ -142,7 +142,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func symbol(_ name: String) -> NSImage? {
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: "XDR Lift")
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: "XDR+")
         image?.isTemplate = true
         return image
     }
@@ -169,7 +169,7 @@ private final class SettingsWindowController: NSWindowController {
     init(booster: XDRBooster, changed: @escaping () -> Void) {
         let controller = SettingsViewController(booster: booster, changed: changed)
         let window = NSWindow(contentViewController: controller)
-        window.title = "XDR Lift 设置"
+        window.title = "XDR+ 设置"
         window.styleMask = [.titled, .closable]
         window.setContentSize(NSSize(width: 380, height: 338))
         window.isReleasedWhenClosed = false
@@ -192,7 +192,7 @@ private final class SettingsViewController: NSViewController {
     private let brightnessToggle = NSButton(checkboxWithTitle: "亮度增强", target: nil, action: nil)
     private let strength = NSSlider(value: 1.45, minValue: 1.05, maxValue: 1.75, target: nil, action: nil)
     private let strengthValue = NSTextField(labelWithString: "")
-    private let launchAtLogin = NSButton(checkboxWithTitle: "开机时启动 XDR Lift", target: nil, action: nil)
+    private let launchAtLogin = NSButton(checkboxWithTitle: "开机时启动 XDR+", target: nil, action: nil)
     private let enableBoostAtLaunch = NSButton(checkboxWithTitle: "启动时打开亮度提升", target: nil, action: nil)
 
     init(booster: XDRBooster, changed: @escaping () -> Void) {
@@ -240,7 +240,7 @@ private final class SettingsViewController: NSViewController {
 
         let divider = NSBox()
         divider.boxType = .separator
-        let quitButton = NSButton(title: "退出 XDR Lift", target: self, action: #selector(quit))
+        let quitButton = NSButton(title: "退出 XDR+", target: self, action: #selector(quit))
         quitButton.bezelStyle = .rounded
         let footer = NSStackView(views: [NSView(), quitButton])
         footer.orientation = .horizontal

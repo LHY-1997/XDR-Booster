@@ -1,11 +1,11 @@
-# XDR Lift
+# XDR+
 
 一个从零编写的 macOS 菜单栏应用，用于配备 XDR/mini-LED 内置屏的 MacBook Pro。
 
 ## 运行
 
 ```sh
-cd XDRLift
+cd XDR+
 swift run
 ```
 
@@ -13,7 +13,7 @@ swift run
 
 ```sh
 ./make-app.sh
-open XDRLift.app
+open XDR+.app
 ```
 
 它会在菜单栏显示一个太阳图标。左键切换亮度增强，右键打开原生系统菜单。启用时，应用通过一个 1×1 的 Metal HDR 图层请求 macOS 的 EDR 合成路径，并在原始 gamma table 上施加受限的增强。关闭、退出和屏幕睡眠时会恢复 gamma/ColorSync 设置。

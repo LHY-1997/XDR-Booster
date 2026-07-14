@@ -2,4 +2,5 @@
 .build/
 .tools/
 XDRLift.app/
+XDR+.app/
 design-qa.md

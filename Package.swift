@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "XDRLift",
+    name: "XDRPlus",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "XDRLift", targets: ["XDRLift"]),
+        .executable(name: "XDRPlus", targets: ["XDRPlus"]),
         .executable(name: "GammaProbe", targets: ["GammaProbe"])
     ],
     targets: [
         .executableTarget(
-            name: "XDRLift",
+            name: "XDRPlus",
             resources: [.process("Resources")]
         ),
         .executableTarget(name: "GammaProbe")
