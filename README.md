@@ -1,6 +1,8 @@
 # XDR+
 
-一个从零编写的 macOS 菜单栏应用，用于配备 XDR/mini-LED 内置屏的 MacBook Pro。
+别浪费了你的XDR屏幕！一个从零编写的 macOS 菜单栏应用，使SDR亮度达到1000尼特！
+21年以后的MacBook Pro均配备了XDR屏幕，但是SDR情况下苹果只开放到500尼特（25年新款MacBook Pro 原生SDR亮度可达1000尼特）。XDR屏幕峰值亮度实际可达1600尼特，持续亮度可达1000尼特。
+用于配备 XDR/mini-LED 内置屏的 MacBook Pro。
 
 ## 运行
 
@@ -20,7 +22,7 @@ open XDR+.app
 
 ## 功能边界与注意事项
 
-- **适用范围**：目标是配备 XDR 或 mini‑LED 内置屏的 MacBook Pro。普通 SDR 显示器、外接显示器及不支持 EDR 的屏幕不保证有效。
+- **适用范围**：目标是配备 XDR 或 mini‑LED 内置屏的 MacBook Pro。普通 SDR 显示器、外接显示器及不支持 EDR 的屏幕不保证有效。（本人目前只有2021款MacBook Pro with M1 Pro，暂时无法测试其他屏幕的兼容性）
 - **实现方式**：应用仅使用 AppKit、Metal 和 CoreGraphics 的公开接口：以 1×1 Metal HDR 图层请求 EDR 合成路径，并通过系统 gamma table 做亮度增强。不包含第三方应用的代码、资源或私有接口。
 - **效果差异**：实际提升受机型、当前系统亮度、环境光、HDR/EDR 状态和 macOS 版本影响。macOS 更新后，效果或兼容性可能发生变化。
 - **不替代系统显示设置**：它不会突破面板的硬件峰值能力，也不承诺固定的亮度数值或 HDR 表现。使用前请先将系统亮度调高。
