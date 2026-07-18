@@ -6,7 +6,9 @@
 
 ## English
 
-Make better use of your XDR display. XDR+ is a macOS menu bar utility that enables higher SDR brightness on supported MacBook Pro displays, helping you unlock more of your screen’s potential.
+Free and open-source XDR brightness booster for MacBook Pro. Like [Vivid](https://www.getvivid.app/) and [BrightIntosh](https://brightintosh.de), but free.
+
+XDR+ is a macOS menu bar utility that enables higher SDR brightness on supported MacBook Pro displays, helping you unlock more of your screen’s potential.
 
 Most MacBook Pro models released since 2021 have an XDR display. Earlier XDR-equipped MacBook Pro models typically limit native SDR brightness to 500 nits, while newer models can reach 1000 nits in SDR. When displaying HDR content, the hardware can reach up to 1600 nits peak brightness and 1000 nits sustained brightness. Most day-to-day content is SDR, so this display potential often remains unused. XDR+ is designed for MacBook Pro models with a built-in XDR or mini-LED display.
 
@@ -39,6 +41,8 @@ XDR+ shows a sun icon in the menu bar. Left-click to toggle brightness enhanceme
 <a id="中文"></a>
 
 ## 中文
+
+免费开源的 MacBook Pro XDR 亮度增强工具。类似 [Vivid](https://www.getvivid.app/) 和 [BrightIntosh](https://brightintosh.de)，但免费。
 
 别浪费了你的 XDR 屏幕！XDR+ 是一个 macOS 菜单栏应用，可在支持的 MacBook Pro 上实现更高的 SDR 亮度，充分利用屏幕潜能。
 
