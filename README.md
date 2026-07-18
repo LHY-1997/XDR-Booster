@@ -4,6 +4,14 @@
 21年以后的MacBook Pro均配备了XDR屏幕，但是SDR情况下苹果只开放到500尼特（25年新款MacBook Pro 原生SDR亮度可达1000尼特）。XDR屏幕峰值亮度实际可达1600尼特，持续亮度可达1000尼特。
 用于配备 XDR/mini-LED 内置屏的 MacBook Pro。
 
+## English
+
+Make better use of your XDR display. XDR+ is a macOS menu bar utility written from scratch that requests macOS’s EDR composition path to boost SDR brightness on supported MacBook Pro displays.
+
+It is designed for MacBook Pro models with built-in XDR or mini-LED displays. Most MacBook Pro models released since 2021 include an XDR display: SDR brightness is typically limited by the system, while the panel has higher HDR/EDR headroom. Actual results vary by model, macOS version, ambient conditions, and current display state.
+
+XDR+ uses public AppKit, Metal, and CoreGraphics APIs only. It creates a 1×1 Metal HDR surface and applies a constrained adjustment to the original gamma table. The original display settings are restored when enhancement is disabled, the app quits, or the display sleeps.
+
 ## 运行
 
 ```sh
