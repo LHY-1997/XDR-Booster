@@ -104,28 +104,37 @@ struct XDRSettingsView: View {
             Color.clear.frame(height: 24)
 
             header
+                .padding(.horizontal, 24)
                 .padding(.bottom, 16)
 
             sectionDivider
 
-            displaySection
-                .padding(.vertical, 16)
+            // 内容区独立滚动，窗口较小时不会挤压底部的固定操作栏。
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    displaySection
+                        .padding(.vertical, 16)
 
-            sectionDivider
+                    // 显示与通用改用留白区分，避免在紧凑窗口中出现多余横线。
+                    generalSection
+                        .padding(.vertical, 16)
+                }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            generalSection
-                .padding(.vertical, 16)
-
-            // 通用区与底部操作也用相同横线收束，形成连续的分区节奏。
+            // 固定页脚前以 Island 风格渐隐细线收束内容区。
             sectionDivider
 
             footer
-                .padding(.top, 12)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-        .frame(minWidth: 400, minHeight: 400, alignment: .topLeading)
-        .background(Color.black)
+        // 采用 CodexIsland 设置窗口的基准尺寸；内容过长时仅中间区域滚动。
+        .frame(minWidth: 440, minHeight: 420, alignment: .topLeading)
+        // 与 CodexIsland 一致使用略带蓝相的深灰，而不是纯黑，降低大面积黑底的生硬感。
+        .background(Color(red: 0.020, green: 0.020, blue: 0.027))
         .preferredColorScheme(.dark)
         .onAppear { model.refresh() }
         .alert(L10n.text("无法更新开机启动", "Unable to update launch at login"), isPresented: errorPresented) {
@@ -160,12 +169,20 @@ struct XDRSettingsView: View {
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle(L10n.text("显示", "Display"))
-            Toggle(L10n.text("亮度增强", "Brightness Enhancement"), isOn: enabledBinding)
-                .toggleStyle(.checkbox)
-                .disabled(!model.isSupported && !model.isEnabled)
+            settingsToggleRow(
+                L10n.text("亮度增强", "Brightness Enhancement"),
+                subtitle: L10n.text("提高 SDR 内容的显示亮度。", "Increase the visible brightness of SDR content."),
+                isOn: model.isEnabled,
+                enabled: model.isSupported || model.isEnabled
+            ) {
+                model.setEnabled(!model.isEnabled)
+            }
 
-            HStack {
-                Text(L10n.text("强度", "Strength"))
+            HStack(alignment: .center) {
+                optionLabel(
+                    L10n.text("强度", "Strength"),
+                    subtitle: L10n.text("调整亮度增强的幅度。", "Adjust the amount of brightness enhancement.")
+                )
                 Spacer()
                 Text(String(format: "× %.2f", model.multiplier))
                     .monospacedDigit()
@@ -179,19 +196,25 @@ struct XDRSettingsView: View {
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle(L10n.text("通用", "General"))
-            Toggle(L10n.text("开机时启动 XDR+", "Launch XDR+ at login"), isOn: launchAtLoginBinding)
-                .toggleStyle(.checkbox)
-            Toggle(L10n.text("启动时打开亮度提升", "Enable brightness enhancement at launch"), isOn: enableBoostAtLaunchBinding)
-                .toggleStyle(.checkbox)
+            settingsToggleRow(
+                // 标题保持 Island 的简短命名；应用名称仅在说明中出现。
+                L10n.text("登录时启动", "Launch at login"),
+                // 沿用 CodexIsland 的简短句式，明确说明登录后会打开的应用。
+                subtitle: L10n.text("登录系统时打开 XDR+。", "Open XDR+ when you sign in."),
+                isOn: model.launchAtLogin
+            ) {
+                model.setLaunchAtLogin(!model.launchAtLogin)
+            }
+            settingsToggleRow(
+                L10n.text("启动时打开亮度提升", "Enable brightness enhancement at launch"),
+                subtitle: L10n.text("启动 XDR+ 时自动开启亮度增强。", "Enable brightness enhancement whenever XDR+ starts."),
+                isOn: model.enableBoostAtLaunch
+            ) {
+                model.setEnableBoostAtLaunch(!model.enableBoostAtLaunch)
+            }
 
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.text("语言", "Language"))
-                        .font(.system(size: 13, weight: .medium))
-                    Text(model.language.subtitle)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
-                }
+                optionLabel(L10n.text("语言", "Language"), subtitle: model.language.subtitle)
                 Spacer()
                 Picker("", selection: languageSelectionBinding) {
                     // 明确列出三项，避免 Swift 6.2 在 Canvas 泛型 ForEach 上的编译器崩溃。
@@ -233,20 +256,8 @@ struct XDRSettingsView: View {
         }
     }
 
-    private var enabledBinding: Binding<Bool> {
-        Binding(get: { model.isEnabled }, set: { newValue in model.setEnabled(newValue) })
-    }
-
     private var multiplierBinding: Binding<Double> {
         Binding(get: { model.multiplier }, set: { newValue in model.setMultiplier(newValue) })
-    }
-
-    private var launchAtLoginBinding: Binding<Bool> {
-        Binding(get: { model.launchAtLogin }, set: { newValue in model.setLaunchAtLogin(newValue) })
-    }
-
-    private var enableBoostAtLaunchBinding: Binding<Bool> {
-        Binding(get: { model.enableBoostAtLaunch }, set: { newValue in model.setEnableBoostAtLaunch(newValue) })
     }
 
     // Picker 使用字符串标签以绕开当前 Swift 6.2 对枚举标签的编译器缺陷。
@@ -275,10 +286,42 @@ struct XDRSettingsView: View {
         .frame(height: 1)
     }
 
-    // 章节标题与 CodexIsland 一样使用较小但更重的文字，避免和控件标题竞争层级。
+    // 使用 CodexIsland 的分区标题：10pt、半粗、0.7 字距与 55% 白色。
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.7)
+            .foregroundStyle(.white.opacity(0.55))
+    }
+
+    // 每个开关采用标题在左、Island 风格蓝色滑块在右的统一行结构。
+    private func settingsToggleRow(
+        _ title: String,
+        subtitle: String,
+        isOn: Bool,
+        enabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .center) {
+            optionLabel(title, subtitle: subtitle)
+            Spacer()
+            XDRSettingsToggle(isOn: isOn, action: action)
+                .opacity(enabled ? 1 : 0.45)
+                .allowsHitTesting(enabled)
+        }
+    }
+
+    // 复用 CodexIsland 行项目层级：标题为 13pt、92% 白色；说明为 11pt、55% 白色。
+    private func optionLabel(_ title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .tracking(-0.07)
+                .foregroundStyle(.white.opacity(0.92))
+            Text(subtitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.55))
+        }
     }
 
     // 链接保持低干扰的文字样式，视觉上让位给右下角退出操作。
@@ -297,12 +340,46 @@ struct XDRSettingsView: View {
     }
 }
 
+// 参考 CodexIsland：30×17 的钴蓝开关，开启时带蓝色辉光，关闭时为低对比灰色。
+private struct XDRSettingsToggle: View {
+    let isOn: Bool
+    let action: () -> Void
+
+    @State private var hovered = false
+    private let cobalt = Color(red: 0 / 255, green: 71 / 255, blue: 171 / 255)
+
+    var body: some View {
+        Button(action: action) {
+            ZStack(alignment: isOn ? .trailing : .leading) {
+                Capsule()
+                    .strokeBorder(.white.opacity(hovered ? 0.20 : 0.13), lineWidth: 1)
+                    .background {
+                        Capsule().fill(isOn ? cobalt.opacity(0.32) : .white.opacity(0.07))
+                    }
+                    .frame(width: 30, height: 17)
+
+                Circle()
+                    .fill(isOn ? cobalt : Color.white.opacity(0.5))
+                    .frame(width: 13, height: 13)
+                    .shadow(color: isOn ? cobalt.opacity(0.85) : .clear, radius: 5)
+                    .padding(.horizontal, 2)
+            }
+        }
+        .buttonStyle(.plain)
+        .contentShape(Capsule())
+        .onHover { hovered = $0 }
+        .animation(.spring(response: 0.32, dampingFraction: 0.72), value: isOn)
+        .animation(.easeInOut(duration: 0.16), value: hovered)
+    }
+}
+
 #if DEBUG
 // Canvas 使用独立预览状态，因此预览时不会实际启用亮度增强。
 struct XDRSettingsView_Previews: PreviewProvider {
     static var previews: some View {
         XDRSettingsView(model: .preview)
-            .frame(width: 400, height: 440)
+            // 预览尺寸与实际窗口一致，方便在 Canvas 中检查固定页脚和滚动区。
+            .frame(width: 440, height: 420)
     }
 }
 #endif

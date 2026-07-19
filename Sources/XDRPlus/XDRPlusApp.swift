@@ -185,10 +185,10 @@ private final class SettingsWindowController: NSWindowController {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        window.backgroundColor = .black
-        // 在保留顶部呼吸空间的同时压缩整体高度，减少设置窗口占用桌面的面积。
-        // SwiftUI 页脚不再使用弹性空白，窗口同步收紧到内容实际所需高度。
-        window.setContentSize(NSSize(width: 400, height: 400))
+        // 透明标题栏露出的区域也采用 CodexIsland 的微蓝深灰，避免与 SwiftUI 内容底色断层。
+        window.backgroundColor = NSColor(srgbRed: 0.020, green: 0.020, blue: 0.027, alpha: 1)
+        // 使用 CodexIsland 相同的设置窗口基准尺寸，超出部分交由 SwiftUI 中间滚动区展示。
+        window.setContentSize(NSSize(width: 440, height: 420))
         window.isReleasedWhenClosed = false
         window.center()
         super.init(window: window)
