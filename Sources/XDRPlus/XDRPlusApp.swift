@@ -170,8 +170,14 @@ private final class SettingsWindowController: NSWindowController {
         let controller = SettingsViewController(booster: booster, changed: changed)
         let window = NSWindow(contentViewController: controller)
         window.title = "XDR+ 设置"
-        window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 380, height: 338))
+        // 使用透明标题栏，把交通灯融入黑色设置画布，形成与 CodexIsland 相同的信息层级。
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.backgroundColor = .black
+        // 在保留顶部呼吸空间的同时压缩整体高度，减少设置窗口占用桌面的面积。
+        window.setContentSize(NSSize(width: 400, height: 400))
         window.isReleasedWhenClosed = false
         window.center()
         super.init(window: window)
@@ -194,6 +200,8 @@ private final class SettingsViewController: NSViewController {
     private let strengthValue = NSTextField(labelWithString: "")
     private let launchAtLogin = NSButton(checkboxWithTitle: "开机时启动 XDR+", target: nil, action: nil)
     private let enableBoostAtLaunch = NSButton(checkboxWithTitle: "启动时打开亮度提升", target: nil, action: nil)
+    private static let githubURL = URL(string: "https://github.com/LHY-1997/XDR-Booster")!
+    private static let licenseURL = URL(string: "https://github.com/LHY-1997/XDR-Booster/blob/main/LICENSE")!
 
     init(booster: XDRBooster, changed: @escaping () -> Void) {
         self.booster = booster
@@ -204,10 +212,14 @@ private final class SettingsViewController: NSViewController {
     required init?(coder: NSCoder) { nil }
 
     override func loadView() {
-        // 使用普通设置窗口和系统控件，跟随 macOS 的字体、颜色及辅助功能设置。
+        // 使用黑色画布，保持系统控件的可访问性，同时让内容层级更清晰。
         let content = NSView()
+        content.wantsLayer = true
+        content.layer?.backgroundColor = NSColor.black.cgColor
         view = content
 
+        // 顶部品牌行承载应用名称、简短说明和版本号，避免版本信息散落在底部。
+        let header = makeHeader()
         let displayTitle = sectionTitle("显示")
         brightnessToggle.target = self
         brightnessToggle.action = #selector(toggleBoost)
@@ -226,7 +238,8 @@ private final class SettingsViewController: NSViewController {
         let displayGroup = NSStackView(views: [displayTitle, brightnessToggle, sliderHeader, strength])
         displayGroup.orientation = .vertical
         displayGroup.alignment = .leading
-        displayGroup.spacing = 8
+        // 显示区使用统一的行距，让开关、数值和滑块均匀排布。
+        displayGroup.spacing = 10
 
         let generalTitle = sectionTitle("通用")
         launchAtLogin.target = self
@@ -236,17 +249,28 @@ private final class SettingsViewController: NSViewController {
         let generalGroup = NSStackView(views: [generalTitle, launchAtLogin, enableBoostAtLaunch])
         generalGroup.orientation = .vertical
         generalGroup.alignment = .leading
-        generalGroup.spacing = 8
+        // 通用区沿用与显示区相同的行距，两个分组的节奏保持一致。
+        generalGroup.spacing = 10
 
         let divider = NSBox()
         divider.boxType = .separator
-        let quitButton = NSButton(title: "退出 XDR+", target: self, action: #selector(quit))
+        // 底部左侧提供项目与许可证入口，退出按钮固定在右下角。
+        let githubButton = makeLinkButton(title: "GitHub ↗", action: #selector(openGitHub))
+        let licenseButton = makeLinkButton(title: "许可证 ↗", action: #selector(openLicense))
+        let quitButton = NSButton(title: "退出", target: self, action: #selector(quit))
         quitButton.bezelStyle = .rounded
-        let footer = NSStackView(views: [NSView(), quitButton])
+        let footer = NSStackView(views: [githubButton, licenseButton, NSView(), quitButton])
         footer.orientation = .horizontal
         footer.alignment = .centerY
+        footer.spacing = 12
 
-        let root = NSStackView(views: [displayGroup, generalGroup, divider, footer])
+        // 将显示和通用归为紧凑内容区，让通用选项更贴近强度滑块。
+        let preferenceGroups = NSStackView(views: [displayGroup, generalGroup])
+        preferenceGroups.orientation = .vertical
+        preferenceGroups.alignment = .leading
+        preferenceGroups.spacing = 10
+
+        let root = NSStackView(views: [header, preferenceGroups, divider, footer])
         root.orientation = .vertical
         root.alignment = .leading
         root.spacing = 18
@@ -255,8 +279,11 @@ private final class SettingsViewController: NSViewController {
         NSLayoutConstraint.activate([
             root.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24),
             root.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
-            root.topAnchor.constraint(equalTo: content.topAnchor, constant: 22),
+            // 避开交通灯区域，避免顶部品牌行贴近窗口上沿。
+            root.topAnchor.constraint(equalTo: content.topAnchor, constant: 46),
             root.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -20),
+            header.widthAnchor.constraint(equalTo: root.widthAnchor),
+            preferenceGroups.widthAnchor.constraint(equalTo: root.widthAnchor),
             displayGroup.widthAnchor.constraint(equalTo: root.widthAnchor),
             generalGroup.widthAnchor.constraint(equalTo: root.widthAnchor),
             divider.widthAnchor.constraint(equalTo: root.widthAnchor),
@@ -302,6 +329,12 @@ private final class SettingsViewController: NSViewController {
         UserDefaults.standard.set(enableBoostAtLaunch.state == .on, forKey: PreferenceKey.enableBoostAtLaunch)
     }
 
+    // 在默认浏览器打开公开项目主页，便于查看源码、问题和发布记录。
+    @objc private func openGitHub() { NSWorkspace.shared.open(Self.githubURL) }
+
+    // 在默认浏览器打开仓库内的 MIT 许可证页面。
+    @objc private func openLicense() { NSWorkspace.shared.open(Self.licenseURL) }
+
     @objc private func quit() { NSApp.terminate(nil) }
 
     // 从共享的 booster 读取状态，避免设置窗口维护自己的副本而产生不同步。
@@ -328,6 +361,72 @@ private final class SettingsViewController: NSViewController {
         label.font = .systemFont(ofSize: 13, weight: .semibold)
         return label
     }
+
+    // 复用顶部品牌样式：左侧名称和说明，右侧用弱强调胶囊显示构建版本。
+    private func makeHeader() -> NSStackView {
+        let name = NSTextField(labelWithString: "XDR+")
+        name.font = .systemFont(ofSize: 16, weight: .semibold)
+        name.textColor = .labelColor
+
+        let subtitle = NSTextField(labelWithString: "MacBook Pro XDR 亮度增强")
+        subtitle.font = .systemFont(ofSize: 11)
+        subtitle.textColor = .secondaryLabelColor
+        let labels = NSStackView(views: [name, subtitle])
+        labels.orientation = .vertical
+        labels.alignment = .leading
+        labels.spacing = 2
+
+        let rawVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        // 测试构建在包内保留 test 标识，界面只展示简洁的发布版本号。
+        let displayVersion = (rawVersion ?? "0.1.4").replacingOccurrences(of: "-test", with: "")
+        // 使用随文字自适应的紧凑胶囊，匹配 CodexIsland 的版本信息比例。
+        let version = VersionPill(version: "v\(displayVersion)")
+
+        let header = NSStackView(views: [labels, NSView(), version])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        return header
+    }
+
+    // 将网页入口显示为低干扰的文字链接，避免与右侧退出操作争夺视觉焦点。
+    private func makeLinkButton(title: String, action: Selector) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action)
+        button.isBordered = false
+        button.font = .systemFont(ofSize: 12)
+        button.contentTintColor = .secondaryLabelColor
+        return button
+    }
+}
+
+// 版本文字通过约束固定在灰色胶囊正中央，避免随字体基线产生视觉偏移。
+@MainActor
+private final class VersionPill: NSView {
+    private let label: NSTextField
+
+    init(version: String) {
+        label = NSTextField(labelWithString: version)
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        layer?.cornerRadius = 7
+
+        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.alignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+    }
+
+    // 胶囊宽度由版本文字加左右留白决定，不再使用固定的大尺寸。
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: label.intrinsicContentSize.width + 16, height: 20)
+    }
+
+    required init?(coder: NSCoder) { nil }
 }
 
 private enum PreferenceKey {
