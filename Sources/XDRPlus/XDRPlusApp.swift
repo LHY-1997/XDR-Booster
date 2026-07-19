@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import MetalKit
 import ServiceManagement
+import SwiftUI
 
 @main
 struct XDRPlusApp {
@@ -70,7 +71,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let toggle = NSMenuItem(title: "亮度增强", action: #selector(toggleFromMenu), keyEquivalent: "")
+        let toggle = NSMenuItem(title: L10n.text("亮度增强", "Brightness Enhancement"), action: #selector(toggleFromMenu), keyEquivalent: "")
         toggle.target = self
         toggle.state = booster.isEnabled ? .on : .off
         toggle.isEnabled = booster.isSupported || booster.isEnabled
@@ -79,11 +80,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(makeStrengthItem())
         menu.addItem(.separator())
 
-        let settings = NSMenuItem(title: "设置…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L10n.text("设置…", "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
 
-        let quit = NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.text("退出", "Quit"), action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         return menu
@@ -91,20 +92,25 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeStrengthItem() -> NSMenuItem {
         let item = NSMenuItem()
-        // 由滑块右边缘决定菜单宽度，避免菜单比内容宽出一大截。
-        let width: CGFloat = 176
+        // 系统菜单会按第一行标题扩展宽度；自定义强度行也依据同一标题动态延展，避免英文出现右侧空白。
+        let toggleTitle = L10n.text("亮度增强", "Brightness Enhancement")
+        let titleWidth = (toggleTitle as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width
+        let width = max(CGFloat(176), ceil(titleWidth + 90))
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 53))
         // AppKit 在未勾选时会收回左侧的勾选栏；自定义强度行也要同步移动，
         // 才能让“强度”首字和滑块与系统菜单项目对齐。
         let textLeading: CGFloat = booster.isEnabled ? 28 : 13
-        let sliderLeading: CGFloat = booster.isEnabled ? 30 : 16
-        let sliderWidth: CGFloat = 140
-        let label = NSTextField(labelWithString: "强度")
+        let defaultSliderLeading: CGFloat = booster.isEnabled ? 30 : 16
+        // 英文滑块仍从强度标题下方开始，只比中文略长，避免整体跑到菜单右侧。
+        let sliderLeading = defaultSliderLeading
+        let sliderWidth: CGFloat = AppLanguage.current.usesChinese ? 140 : 170
+        let label = NSTextField(labelWithString: L10n.text("强度", "Strength"))
         // 与当前勾选状态下 AppKit 的标题列对齐。
-        label.frame = NSRect(x: textLeading, y: 31, width: 76, height: 16)
+        let labelWidth: CGFloat = AppLanguage.current.usesChinese ? 38 : 62
+        label.frame = NSRect(x: textLeading, y: 31, width: labelWidth, height: 16)
         label.font = .systemFont(ofSize: 12, weight: .medium)
         let value = NSTextField(labelWithString: String(format: "× %.2f", booster.multiplier))
-        value.frame = NSRect(x: textLeading + 38, y: 31, width: 76, height: 16)
+        value.frame = NSRect(x: textLeading + labelWidth, y: 31, width: 76, height: 16)
         value.alignment = .left
         value.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         let slider = NSSlider(value: booster.multiplier, minValue: 1.05, maxValue: 1.75, target: menuSliderControl, action: #selector(MenuSliderControl.changed(_:)))
@@ -166,10 +172,14 @@ private final class MenuSliderControl: NSObject {
 
 @MainActor
 private final class SettingsWindowController: NSWindowController {
+    private let model: SettingsViewModel
+
     init(booster: XDRBooster, changed: @escaping () -> Void) {
-        let controller = SettingsViewController(booster: booster, changed: changed)
+        // 设置窗口改由 SwiftUI 承载，XDRBooster 仍作为唯一的亮度状态来源。
+        model = SettingsViewModel(booster: booster, changed: changed)
+        let controller = NSHostingController(rootView: XDRSettingsView(model: model))
         let window = NSWindow(contentViewController: controller)
-        window.title = "XDR+ 设置"
+        window.title = L10n.text("XDR+ 设置", "XDR+ Settings")
         // 使用透明标题栏，把交通灯融入黑色设置画布，形成与 CodexIsland 相同的信息层级。
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
@@ -177,6 +187,7 @@ private final class SettingsWindowController: NSWindowController {
         window.isMovableByWindowBackground = true
         window.backgroundColor = .black
         // 在保留顶部呼吸空间的同时压缩整体高度，减少设置窗口占用桌面的面积。
+        // SwiftUI 页脚不再使用弹性空白，窗口同步收紧到内容实际所需高度。
         window.setContentSize(NSSize(width: 400, height: 400))
         window.isReleasedWhenClosed = false
         window.center()
@@ -187,7 +198,9 @@ private final class SettingsWindowController: NSWindowController {
 
     // 供菜单栏操作调用：窗口打开时即时更新；关闭时也安全地更新下次显示的状态。
     func refreshControls() {
-        (contentViewController as? SettingsViewController)?.refreshControls()
+        model.refresh()
+        // 语言可能在已打开的设置窗口中切换，窗口辅助标题也必须同步更新。
+        window?.title = L10n.text("XDR+ 设置", "XDR+ Settings")
     }
 }
 
@@ -195,11 +208,21 @@ private final class SettingsWindowController: NSWindowController {
 private final class SettingsViewController: NSViewController {
     private let booster: XDRBooster
     private let changed: () -> Void
-    private let brightnessToggle = NSButton(checkboxWithTitle: "亮度增强", target: nil, action: nil)
+    private let displayTitle = NSTextField(labelWithString: "")
+    private let generalTitle = NSTextField(labelWithString: "")
+    private let sliderTitle = NSTextField(labelWithString: "")
+    private let languageTitle = NSTextField(labelWithString: "")
+    private let languageSubtitle = NSTextField(labelWithString: "")
+    private let headerSubtitle = NSTextField(labelWithString: "")
+    private let brightnessToggle = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let strength = NSSlider(value: 1.45, minValue: 1.05, maxValue: 1.75, target: nil, action: nil)
     private let strengthValue = NSTextField(labelWithString: "")
-    private let launchAtLogin = NSButton(checkboxWithTitle: "开机时启动 XDR+", target: nil, action: nil)
-    private let enableBoostAtLaunch = NSButton(checkboxWithTitle: "启动时打开亮度提升", target: nil, action: nil)
+    private let launchAtLogin = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let enableBoostAtLaunch = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let languagePicker = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let githubButton = NSButton(title: "", target: nil, action: nil)
+    private let licenseButton = NSButton(title: "", target: nil, action: nil)
+    private let quitButton = NSButton(title: "", target: nil, action: nil)
     private static let githubURL = URL(string: "https://github.com/LHY-1997/XDR-Booster")!
     private static let licenseURL = URL(string: "https://github.com/LHY-1997/XDR-Booster/blob/main/LICENSE")!
 
@@ -220,11 +243,10 @@ private final class SettingsViewController: NSViewController {
 
         // 顶部品牌行承载应用名称、简短说明和版本号，避免版本信息散落在底部。
         let header = makeHeader()
-        let displayTitle = sectionTitle("显示")
+        configureSectionTitle(displayTitle)
         brightnessToggle.target = self
         brightnessToggle.action = #selector(toggleBoost)
 
-        let sliderTitle = NSTextField(labelWithString: "强度")
         sliderTitle.font = .systemFont(ofSize: 13)
         strengthValue.alignment = .right
         strengthValue.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
@@ -241,12 +263,28 @@ private final class SettingsViewController: NSViewController {
         // 显示区使用统一的行距，让开关、数值和滑块均匀排布。
         displayGroup.spacing = 10
 
-        let generalTitle = sectionTitle("通用")
+        configureSectionTitle(generalTitle)
         launchAtLogin.target = self
         launchAtLogin.action = #selector(launchAtLoginChanged)
         enableBoostAtLaunch.target = self
         enableBoostAtLaunch.action = #selector(enableBoostAtLaunchChanged)
-        let generalGroup = NSStackView(views: [generalTitle, launchAtLogin, enableBoostAtLaunch])
+        // 语言选择与其他通用偏好放在同一组，默认自动跟随 macOS 语言。
+        languagePicker.addItems(withTitles: AppLanguage.allCases.map(\.menuLabel))
+        languagePicker.target = self
+        languagePicker.action = #selector(languageChanged)
+        languagePicker.controlSize = .small
+        // 采用 CodexIsland 的标题与辅助说明层级，当前语言的含义一眼可见。
+        languageTitle.font = .systemFont(ofSize: 13, weight: .medium)
+        languageSubtitle.font = .systemFont(ofSize: 11, weight: .medium)
+        languageSubtitle.textColor = NSColor.white.withAlphaComponent(0.55)
+        let languageLabels = NSStackView(views: [languageTitle, languageSubtitle])
+        languageLabels.orientation = .vertical
+        languageLabels.alignment = .leading
+        languageLabels.spacing = 2
+        let languageRow = NSStackView(views: [languageLabels, NSView(), languagePicker])
+        languageRow.orientation = .horizontal
+        languageRow.alignment = .centerY
+        let generalGroup = NSStackView(views: [generalTitle, launchAtLogin, enableBoostAtLaunch, languageRow])
         generalGroup.orientation = .vertical
         generalGroup.alignment = .leading
         // 通用区沿用与显示区相同的行距，两个分组的节奏保持一致。
@@ -255,9 +293,10 @@ private final class SettingsViewController: NSViewController {
         let divider = NSBox()
         divider.boxType = .separator
         // 底部左侧提供项目与许可证入口，退出按钮固定在右下角。
-        let githubButton = makeLinkButton(title: "GitHub ↗", action: #selector(openGitHub))
-        let licenseButton = makeLinkButton(title: "许可证 ↗", action: #selector(openLicense))
-        let quitButton = NSButton(title: "退出", target: self, action: #selector(quit))
+        configureLinkButton(githubButton, action: #selector(openGitHub))
+        configureLinkButton(licenseButton, action: #selector(openLicense))
+        quitButton.target = self
+        quitButton.action = #selector(quit)
         quitButton.bezelStyle = .rounded
         let footer = NSStackView(views: [githubButton, licenseButton, NSView(), quitButton])
         footer.orientation = .horizontal
@@ -286,11 +325,14 @@ private final class SettingsViewController: NSViewController {
             preferenceGroups.widthAnchor.constraint(equalTo: root.widthAnchor),
             displayGroup.widthAnchor.constraint(equalTo: root.widthAnchor),
             generalGroup.widthAnchor.constraint(equalTo: root.widthAnchor),
+            languageRow.widthAnchor.constraint(equalTo: root.widthAnchor),
             divider.widthAnchor.constraint(equalTo: root.widthAnchor),
             footer.widthAnchor.constraint(equalTo: root.widthAnchor),
             sliderHeader.widthAnchor.constraint(equalTo: root.widthAnchor),
             strength.widthAnchor.constraint(equalTo: root.widthAnchor)
         ])
+        // 所有控件创建后统一填入当前语言，避免初始化期间出现混合语言。
+        applyLocalization()
         refreshControls()
     }
 
@@ -329,6 +371,14 @@ private final class SettingsViewController: NSViewController {
         UserDefaults.standard.set(enableBoostAtLaunch.state == .on, forKey: PreferenceKey.enableBoostAtLaunch)
     }
 
+    @objc private func languageChanged() {
+        // 选择结果立即写入偏好，并刷新已打开设置窗口中的全部文字。
+        let selectedIndex = languagePicker.indexOfSelectedItem
+        guard AppLanguage.allCases.indices.contains(selectedIndex) else { return }
+        AppLanguage.select(AppLanguage.allCases[selectedIndex])
+        applyLocalization()
+    }
+
     // 在默认浏览器打开公开项目主页，便于查看源码、问题和发布记录。
     @objc private func openGitHub() { NSWorkspace.shared.open(Self.githubURL) }
 
@@ -356,10 +406,31 @@ private final class SettingsViewController: NSViewController {
         strengthValue.stringValue = String(format: "× %.2f", strength.doubleValue)
     }
 
-    private func sectionTitle(_ string: String) -> NSTextField {
-        let label = NSTextField(labelWithString: string)
+    // 语言切换后不重建窗口，直接替换现有控件文字以保留当前开关和滑块状态。
+    private func applyLocalization() {
+        displayTitle.stringValue = L10n.text("显示", "Display")
+        generalTitle.stringValue = L10n.text("通用", "General")
+        sliderTitle.stringValue = L10n.text("强度", "Strength")
+        languageTitle.stringValue = L10n.text("语言", "Language")
+        languageSubtitle.stringValue = AppLanguage.current.subtitle
+        headerSubtitle.stringValue = L10n.text("MacBook Pro XDR 亮度增强", "MacBook Pro XDR Brightness Booster")
+        brightnessToggle.title = L10n.text("亮度增强", "Brightness Enhancement")
+        launchAtLogin.title = L10n.text("开机时启动 XDR+", "Launch XDR+ at login")
+        enableBoostAtLaunch.title = L10n.text("启动时打开亮度提升", "Enable brightness enhancement at launch")
+        githubButton.title = "GitHub ↗"
+        licenseButton.title = L10n.text("许可证 ↗", "License ↗")
+        quitButton.title = L10n.text("退出", "Quit")
+        view.window?.title = L10n.text("XDR+ 设置", "XDR+ Settings")
+
+        for (index, language) in AppLanguage.allCases.enumerated() {
+            languagePicker.item(at: index)?.title = language.menuLabel
+        }
+        languagePicker.selectItem(at: AppLanguage.current.index)
+    }
+
+    // 统一章节标题字体，确保中英文切换后视觉权重保持一致。
+    private func configureSectionTitle(_ label: NSTextField) {
         label.font = .systemFont(ofSize: 13, weight: .semibold)
-        return label
     }
 
     // 复用顶部品牌样式：左侧名称和说明，右侧用弱强调胶囊显示构建版本。
@@ -368,10 +439,9 @@ private final class SettingsViewController: NSViewController {
         name.font = .systemFont(ofSize: 16, weight: .semibold)
         name.textColor = .labelColor
 
-        let subtitle = NSTextField(labelWithString: "MacBook Pro XDR 亮度增强")
-        subtitle.font = .systemFont(ofSize: 11)
-        subtitle.textColor = .secondaryLabelColor
-        let labels = NSStackView(views: [name, subtitle])
+        headerSubtitle.font = .systemFont(ofSize: 11)
+        headerSubtitle.textColor = .secondaryLabelColor
+        let labels = NSStackView(views: [name, headerSubtitle])
         labels.orientation = .vertical
         labels.alignment = .leading
         labels.spacing = 2
@@ -389,12 +459,12 @@ private final class SettingsViewController: NSViewController {
     }
 
     // 将网页入口显示为低干扰的文字链接，避免与右侧退出操作争夺视觉焦点。
-    private func makeLinkButton(title: String, action: Selector) -> NSButton {
-        let button = NSButton(title: title, target: self, action: action)
+    private func configureLinkButton(_ button: NSButton, action: Selector) {
+        button.target = self
+        button.action = action
         button.isBordered = false
         button.font = .systemFont(ofSize: 12)
         button.contentTintColor = .secondaryLabelColor
-        return button
     }
 }
 
@@ -429,13 +499,68 @@ private final class VersionPill: NSView {
     required init?(coder: NSCoder) { nil }
 }
 
-private enum PreferenceKey {
+// 语言偏好沿用 CodexIsland 的“自动 / 指定语言”模型，默认自动跟随 macOS。
+enum AppLanguage: String, CaseIterable, Hashable {
+    case automatic
+    case chinese
+    case english
+
+    private static let preferenceKey = "appLanguage"
+
+    static var current: AppLanguage {
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: preferenceKey) ?? "") ?? .automatic
+    }
+
+    static func select(_ language: AppLanguage) {
+        UserDefaults.standard.set(language.rawValue, forKey: preferenceKey)
+    }
+
+    var usesChinese: Bool {
+        switch self {
+        case .chinese: true
+        case .english: false
+        case .automatic:
+            Locale.preferredLanguages.first?.lowercased().hasPrefix("zh") ?? false
+        }
+    }
+
+    var index: Int {
+        AppLanguage.allCases.firstIndex(of: self) ?? 0
+    }
+
+    // 选项保留各语言的本地名称，切换界面语言时也始终容易辨认。
+    var menuLabel: String {
+        switch self {
+        case .automatic: L10n.text("自动", "Auto")
+        case .chinese: "中文"
+        case .english: "English"
+        }
+    }
+
+    // 语言行的辅助说明遵循 CodexIsland 的简短、弱强调文案规则。
+    var subtitle: String {
+        switch self {
+        case .automatic: L10n.text("跟随 macOS", "Follows macOS")
+        case .chinese: "简体中文"
+        case .english: "English"
+        }
+    }
+}
+
+// 集中管理中英文文案；自动模式只根据系统首选语言选择其中一种。
+enum L10n {
+    static func text(_ chinese: String, _ english: String) -> String {
+        AppLanguage.current.usesChinese ? chinese : english
+    }
+}
+
+enum PreferenceKey {
     static let enableBoostAtLaunch = "enableBoostAtLaunch"
     static let multiplier = "brightnessMultiplier"
 }
 
 @MainActor
-private final class XDRBooster {
+final class XDRBooster {
     // 保存开启前的 Gamma 表；关闭时必须用它精确恢复。
     private var gamma: GammaSnapshot?
     // 1×1 Metal 窗口：仅用于请求系统进入 EDR 合成路径。
