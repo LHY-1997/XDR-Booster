@@ -180,14 +180,14 @@ private final class SettingsWindowController: NSWindowController {
         let controller = NSHostingController(rootView: XDRSettingsView(model: model))
         let window = NSWindow(contentViewController: controller)
         window.title = L10n.text("XDR+ 设置", "XDR+ Settings")
-        // 使用透明标题栏，把交通灯融入黑色设置画布，形成与 CodexIsland 相同的信息层级。
+        // 使用透明标题栏，把交通灯融入深色设置画布，形成清晰的信息层级。
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        // 透明标题栏露出的区域也采用 CodexIsland 的微蓝深灰，避免与 SwiftUI 内容底色断层。
+        // 透明标题栏露出的区域也采用微蓝深灰，避免与 SwiftUI 内容底色断层。
         window.backgroundColor = NSColor(srgbRed: 0.020, green: 0.020, blue: 0.027, alpha: 1)
-        // 使用 CodexIsland 相同的设置窗口基准尺寸，超出部分交由 SwiftUI 中间滚动区展示。
+        // 使用紧凑的设置窗口基准尺寸，超出部分交由 SwiftUI 中间滚动区展示。
         window.setContentSize(NSSize(width: 440, height: 420))
         window.isReleasedWhenClosed = false
         window.center()
@@ -273,7 +273,7 @@ private final class SettingsViewController: NSViewController {
         languagePicker.target = self
         languagePicker.action = #selector(languageChanged)
         languagePicker.controlSize = .small
-        // 采用 CodexIsland 的标题与辅助说明层级，当前语言的含义一眼可见。
+        // 标题与辅助说明保持明确层级，当前语言的含义一眼可见。
         languageTitle.font = .systemFont(ofSize: 13, weight: .medium)
         languageSubtitle.font = .systemFont(ofSize: 11, weight: .medium)
         languageSubtitle.textColor = NSColor.white.withAlphaComponent(0.55)
@@ -449,7 +449,7 @@ private final class SettingsViewController: NSViewController {
         let rawVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         // 测试构建在包内保留 test 标识，界面只展示简洁的发布版本号。
         let displayVersion = (rawVersion ?? "0.1.4").replacingOccurrences(of: "-test", with: "")
-        // 使用随文字自适应的紧凑胶囊，匹配 CodexIsland 的版本信息比例。
+        // 使用随文字自适应的紧凑胶囊，保持版本信息比例协调。
         let version = VersionPill(version: "v\(displayVersion)")
 
         let header = NSStackView(views: [labels, NSView(), version])
@@ -499,7 +499,7 @@ private final class VersionPill: NSView {
     required init?(coder: NSCoder) { nil }
 }
 
-// 语言偏好沿用 CodexIsland 的“自动 / 指定语言”模型，默认自动跟随 macOS。
+// 语言偏好支持“自动 / 指定语言”模式，默认自动跟随 macOS。
 enum AppLanguage: String, CaseIterable, Hashable {
     case automatic
     case chinese
@@ -537,7 +537,7 @@ enum AppLanguage: String, CaseIterable, Hashable {
         }
     }
 
-    // 语言行的辅助说明遵循 CodexIsland 的简短、弱强调文案规则。
+    // 语言行使用简短、弱强调的辅助说明文案。
     var subtitle: String {
         switch self {
         case .automatic: L10n.text("跟随 macOS", "Follows macOS")

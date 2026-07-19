@@ -91,7 +91,7 @@ final class SettingsViewModel: ObservableObject {
     }
 }
 
-// SwiftUI 设置页可直接在 Xcode Canvas 预览；布局沿用此前黑色、紧凑的 CodexIsland 风格。
+// SwiftUI 设置页可直接在 Xcode Canvas 预览；布局采用黑色、紧凑的系统风格。
 struct XDRSettingsView: View {
     @ObservedObject var model: SettingsViewModel
 
@@ -131,9 +131,9 @@ struct XDRSettingsView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
         }
-        // 采用 CodexIsland 设置窗口的基准尺寸；内容过长时仅中间区域滚动。
+        // 采用紧凑设置窗口基准尺寸；内容过长时仅中间区域滚动。
         .frame(minWidth: 440, minHeight: 420, alignment: .topLeading)
-        // 与 CodexIsland 一致使用略带蓝相的深灰，而不是纯黑，降低大面积黑底的生硬感。
+        // 使用略带蓝相的深灰，而不是纯黑，降低大面积黑底的生硬感。
         .background(Color(red: 0.020, green: 0.020, blue: 0.027))
         .preferredColorScheme(.dark)
         .onAppear { model.refresh() }
@@ -199,7 +199,7 @@ struct XDRSettingsView: View {
             settingsToggleRow(
                 // 标题保持 Island 的简短命名；应用名称仅在说明中出现。
                 L10n.text("登录时启动", "Launch at login"),
-                // 沿用 CodexIsland 的简短句式，明确说明登录后会打开的应用。
+                // 使用简短句式，明确说明登录后会打开的应用。
                 subtitle: L10n.text("登录系统时打开 XDR+。", "Open XDR+ when you sign in."),
                 isOn: model.launchAtLogin
             ) {
@@ -236,10 +236,10 @@ struct XDRSettingsView: View {
             linkButton(L10n.text("许可证 ↗", "License ↗")) { model.open(licenseURL) }
             Spacer()
             Button { model.quit() } label: {
-                // 参考 CodexIsland：小号半粗文字搭配极浅胶囊背景，而非系统默认按钮。
+                // 小号半粗文字搭配极浅胶囊背景，避免使用系统默认按钮外观。
                 Text(L10n.text("退出", "Quit"))
                     .font(.system(size: 11, weight: .semibold))
-                    // 默认使用 CodexIsland 页脚同级的 55% 白色，避免退出操作过度抢眼。
+                    // 使用 55% 白色，避免退出操作过度抢眼。
                     .foregroundStyle(.white.opacity(0.55))
                     .padding(.horizontal, 11)
                     .padding(.vertical, 5)
@@ -275,7 +275,7 @@ struct XDRSettingsView: View {
         Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })
     }
 
-    // 复用 CodexIsland 的两端渐隐细线，让分区自然出现而不形成生硬边界。
+    // 两端渐隐细线让分区自然出现，而不形成生硬边界。
     private var sectionDivider: some View {
         LinearGradient(
             // 纯黑画布会让原始 Island 数值显得过淡，因此小幅提高中心可见度。
@@ -286,7 +286,7 @@ struct XDRSettingsView: View {
         .frame(height: 1)
     }
 
-    // 使用 CodexIsland 的分区标题：10pt、半粗、0.7 字距与 55% 白色。
+    // 分区标题使用 10pt、半粗、0.7 字距与 55% 白色。
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 10, weight: .semibold))
@@ -311,7 +311,7 @@ struct XDRSettingsView: View {
         }
     }
 
-    // 复用 CodexIsland 行项目层级：标题为 13pt、92% 白色；说明为 11pt、55% 白色。
+    // 行项目层级：标题为 13pt、92% 白色；说明为 11pt、55% 白色。
     private func optionLabel(_ title: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
@@ -340,7 +340,7 @@ struct XDRSettingsView: View {
     }
 }
 
-// 参考 CodexIsland：30×17 的钴蓝开关，开启时带蓝色辉光，关闭时为低对比灰色。
+// 30×17 的钴蓝开关，开启时带蓝色辉光，关闭时为低对比灰色。
 private struct XDRSettingsToggle: View {
     let isOn: Bool
     let action: () -> Void
